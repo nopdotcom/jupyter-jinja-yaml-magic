@@ -1,15 +1,19 @@
 
 # Jinja2 and YAML for Jupyter
 
-People use YAML and Jinja2 together; they're the core of Ansible. Sometimes 
-you need a playground to figure out details of how they work. This magic provides
-both.
+### Please see [the full HTML version](https://nopdotcom.github.io/jinja-straight-demo.html).
+
+The rest of this file is just the `nbconvert` into Markdown; it's hard to read. See [the HTML version](https://nopdotcom.github.io/jinja-straight-demo.html).
+
+------
+
+People use YAML and Jinja2 together; they're the core of Ansible. Sometimes you need a playground to figure out details of how they work. This magic provides both.
 
 **In:**
 
 ```python
-%load_ext jinja_magic
-%reload_ext jinja_magic
+%load_ext jinja_yaml_magic
+%reload_ext jinja_yaml_magic
 ```
 
 (Ignore the warning for `%load_ext`/`%reload_ext`.)
