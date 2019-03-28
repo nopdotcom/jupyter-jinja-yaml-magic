@@ -12,6 +12,16 @@ from typing import Optional, Dict
 def identity(v):
     return v
 
+# PyYAML deprecates the load() function; see https://msg.pyyaml.org/load .
+# We're loading cells from a notebook; the YAML is surrounded by other
+# executable code, so there's no point in limiting PyYAML's
+# ability to run code. To avoid a hard dependency on PyYAML 5.1, pick
+# the "unsafe"/"legacy" loader:
+try:
+    _yaml_load = yaml.unsafe_load
+except AttributeError:
+    _yaml_load = yaml.load
+
 @magics_class
 class JinjaMagics(Magics):
     """Magics class containing the Jinja2 magics and state.
@@ -194,18 +204,18 @@ class JinjaMagics(Magics):
 
     # To limit the number of notebook variables pulled, don't pass in the
     # input boxes.
-    history_names_re = re.compile("_i?[0-9]*")
+    history_names_re = re.compile("^_i?[0-9]*$")
     # ...with a few exceptions.
     extra_name_set = frozenset({"In", "Out", "__", "___", "_i", "_ii", "_iii"})
 
-    def get_jinja_vars(self, top_vars: dict):
+    def get_jinja_vars(self, top_vars):
         """Pull a fine selection of notebook variables into the Jinja namespace"""
         user_vars = dict((k, v) for (k, v) in self.shell.user_ns.items()
                          if not k.startswith('_')
                          and k not in self.shell.user_ns_hidden)
 
         history_vars = dict((k, v) for (k, v) in self.shell.user_ns.items()
-                            if self.history_names_re.fullmatch(k) or
+                            if self.history_names_re.match(k) or
                             k in self.extra_name_set)
 
         user_vars.update(history_vars)
@@ -219,7 +229,7 @@ class JinjaMagics(Magics):
         return self
 
     @cell_magic
-    def yaml(self, line: str, cell):
+    def yaml(self, line, cell):
         """ Usage:
         %%yaml [variable[=]]
 
@@ -236,7 +246,7 @@ class JinjaMagics(Magics):
             if variable.endswith("="):
                 variable = variable[0:-1]
 
-        v = yaml.load(cell)
+        v = _yaml_load(cell)
 
         if variable:
             self.shell.user_ns[variable] = v
