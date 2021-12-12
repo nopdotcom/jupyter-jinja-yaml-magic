@@ -194,8 +194,8 @@ class JinjaMagics(Magics):
         """Find modified variables from the template run, and store them
         back in their source.
         """
-        vars = dict((k, v) for (k, v) in template.module.__dict__.items() if not k.startswith('_'))
-        for k, v in vars.items():
+        all_vars = dict((k, v) for (k, v) in template.module.__dict__.items() if not k.startswith('_'))
+        for k, v in all_vars.items():
             # If we were operating on specified globals, munge those instead of notebook globals
             if top_env_var.get(k):
                 top_env_var[k] = v
@@ -208,7 +208,7 @@ class JinjaMagics(Magics):
     # ...with a few exceptions.
     extra_name_set = frozenset({"In", "Out", "__", "___", "_i", "_ii", "_iii"})
 
-    def get_jinja_vars(self, top_vars):
+    def get_jinja_vars(self, top_vars) -> Mapping[str, Any]:
         """Pull a fine selection of notebook variables into the Jinja namespace"""
         user_vars = dict((k, v) for (k, v) in self.shell.user_ns.items()
                          if not k.startswith('_')
