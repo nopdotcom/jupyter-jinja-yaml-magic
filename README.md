@@ -1,6 +1,25 @@
 
 # Jinja2 and YAML for Jupyter
 
+## Update
+
+0.2.0a1 adds a loader for Ansible's built-in filters. Make sure you have 
+`ansible-core` installed in your environment, and then run this in a cell:
+
+```jupyter
+%jinja_load_ansible
+```
+
+`%jinja_load_ansible` takes one optional argument: a directory to search for
+additional Ansible plugins. To see if it works, run something like
+
+```jinja
+%%jinja
+{{ ""|md5 }}
+```
+
+----
+
 ### Please see [the full HTML version](https://nopdotcom.github.io/jinja-straight-demo.html).
 
 The rest of this file is just the `nbconvert` into Markdown; it's hard to read. See [the HTML version](https://nopdotcom.github.io/jinja-straight-demo.html).

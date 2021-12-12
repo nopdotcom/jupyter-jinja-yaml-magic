@@ -13,7 +13,7 @@ requirements = [
 
 setup(
     name="jinja-yaml-magic",
-    version="0.1.2",
+    version="0.2.0a1",
     packages=find_packages(),
 
     # package_data={
@@ -27,6 +27,10 @@ setup(
     long_description_content_type='text/markdown',
 
     install_requires=requirements,
+
+    extras_require={
+        "ansible": ["ansible-core>=2.12.1"],
+    },
 
     classifiers=[
         "Programming Language :: Python :: 3",
