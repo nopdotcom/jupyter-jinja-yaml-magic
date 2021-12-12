@@ -37,31 +37,29 @@ class JinjaMagics(Magics):
         super(JinjaMagics, self).__init__(shell)
 
         # We have two loaders: one dictionary-based, for use in notebooks...
-        self.jinja_template_dict = {} # type: dict[str, jinja2.Template]
+        self.jinja_template_dict: MutableMapping[str, str] = {}
         self.dict_loader = jinja2.DictLoader(self.jinja_template_dict)
 
         # ...and one which loads from the filesystem. The dict one is used first.
         self.fs_loader = jinja2.FileSystemLoader('.')
         self.loader = jinja2.ChoiceLoader((self.dict_loader, self.fs_loader))
 
-        #self.jinja_environment = jinja2.Environment(loader=self.loader)
+        # self.jinja_environment = jinja2.Environment(loader=self.loader)
+        self.jinja_environment: Optional[jinja2.Environment] = None
         self.set_nb_var("jinja_env", dict())
         self.set_nb_var("jinja_options", dict())
+        self.set_nb_var("jinja_filters", dict())
 
-    def get_nb_var(self, k, default=None):
-        # type: (str, Optional[str]) -> object
+    def get_nb_var(self, k: str, default: Optional[Any] = None) -> Any:
         """Retrieve a variable from the notebook"""
         return self.shell.user_ns.get(k, default)
 
-    def set_nb_var(self, k, v):
-        # type: (str, object) -> None
+    def set_nb_var(self, k: str, v) -> None:
         """Stuff a value into the notebook"""
         self.shell.user_ns[k] = v
 
-
     @cell_magic
-    def jinja_template(self, line, cell):
-        # type: (str, str) -> None
+    def jinja_template(self, line: str, cell: str):
         """'%%jinja_template NAME' creates a template named NAME.
 
         Named templates are required for extends, includes, and imports.
@@ -145,7 +143,7 @@ class JinjaMagics(Magics):
          --code, or --pretty (the default).
 
         If formatted as "--code", Pygment highlighting is available through
-        "--lang"; see http://pygments.org/docs/lexers for available lexers.
+        "--lang"; see https://pygments.org/docs/lexers for available lexers.
 
         If "--variables" is specified, it must be a variable containing a
         dict; its values override notebook variables. If it's not specified,
@@ -157,10 +155,13 @@ class JinjaMagics(Magics):
         in --variables (including "jinja_env"), or in notebook variables.
 
         Note that %%yaml sets "jinja_env" by default.
+
+        The dictionary "jinja_filters" is added to the default list of
+        filters.
         """
 
         args = self.jinja_parser.parse_args(line.split())
-        # print(args)
+
         display_func_name = args.format
         display_func = self.display_functions[display_func_name]
         display_kwargs = {}
@@ -170,12 +171,18 @@ class JinjaMagics(Magics):
             display_kwargs["language"] = args.lang
 
         top_env_var = self.get_nb_var(args.variables)
+
         all_vars = self.get_jinja_vars(top_env_var)
 
         jinja_options = self.get_nb_var("jinja_options", {})
+        assert isinstance(jinja_options, MutableMapping)
+
         jinja_options["loader"] = self.loader
-        self.jinja_environment = jinja2.Environment(**jinja_options) #()jinja_options)
-        je = self.jinja_environment
+        self.jinja_environment = jinja2.Environment(**jinja_options)
+
+        filters = self.get_nb_var("jinja_filters", {})
+        # Jinja ships with some filters, so we can't just replace the filter list.
+        self.jinja_environment.filters.update(filters)
 
         if args.template:
             # insert check here that the body of the cell is blank
@@ -218,9 +225,7 @@ class JinjaMagics(Magics):
                             if self.history_names_re.match(k) or
                             k in self.extra_name_set)
 
-        user_vars.update(history_vars)
-        user_vars.update(top_vars)
-        return user_vars
+        return {**history_vars, **user_vars, **top_vars}
 
     # noinspection PyUnusedLocal
     @line_magic
@@ -254,6 +259,28 @@ class JinjaMagics(Magics):
         else:
             self.shell.user_ns["jinja_env"] = v
             return v
+
+    @line_magic
+    def jinja_load_ansible(self, line: str):  # noinspection
+        """ Usage:
+        %jinja_load_ansible [filter_dir]
+
+        Load Ansible filters into "jinja_filters", making them available to
+        all templates. This is a separate step, since you might not have
+        Ansible installed.
+
+        Any filter plugins found in "filter_dir" will be loaded as well.
+        "filter_dir" defaults to 'plugins/filter'.
+        """
+        plugin_dir = "plugins/filter"
+        words = line.split()
+        if len(words) > 1:
+            plugin_dir = words[1]
+        from ._load_ansible_filters import _load_ansible_filters
+        filters = _load_ansible_filters(plugin_dir)
+        old = self.get_nb_var("jinja_filters", {})
+        self.set_nb_var("jinja_filters", {**old, **filters})
+        return None
 
 
 def load_ipython_extension(ip):
