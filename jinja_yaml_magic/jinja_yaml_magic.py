@@ -1,26 +1,24 @@
-import sys
-import traceback
-
-from IPython import display
-from IPython.core.magic import register_cell_magic, Magics, magics_class, cell_magic, line_cell_magic, line_magic
-import jinja2
-import yaml
 import argparse
 import re
-from typing import Optional, Dict
+import sys
+from typing import Optional, Type, Any, cast, MutableMapping, Mapping
 
-def identity(v):
-    return v
+import jinja2
+import yaml
+from IPython import display
+from IPython.core.magic import Magics, magics_class, cell_magic, line_cell_magic, line_magic
 
 # PyYAML deprecates the load() function; see https://msg.pyyaml.org/load .
 # We're loading cells from a notebook; the YAML is surrounded by other
 # executable code, so there's no point in limiting PyYAML's
 # ability to run code. To avoid a hard dependency on PyYAML 5.1, pick
 # the "unsafe"/"legacy" loader:
+
 try:
     _yaml_load = yaml.unsafe_load
 except AttributeError:
     _yaml_load = yaml.load
+
 
 @magics_class
 class JinjaMagics(Magics):
@@ -104,24 +102,26 @@ class JinjaMagics(Magics):
         # code="Code",
     )
     # Map format identifiers to their display.* wrappers
-    display_functions = dict(
+    display_functions: MutableMapping[str, Type[display.TextDisplayObject]] = dict(
         plain=display.display,
         html=display.HTML,
         latex=display.Latex,
         pretty=display.Pretty,
         # iframe=display.IFrame,
         markdown=display.Markdown,
-        svg = display.SVG,
-    ) # type: Dict[str, display.TextDisplayObject]
+        svg=display.SVG,
+    )
 
-    try:
-        display_functions["code"] = display.Code
+    display_code = getattr(display, "Code", None)
+    if display_code is not None:
+        display_code = cast(display_code, Type[display.TextDisplayObject])
+        display_functions["code"] = display_code
         formats_to_human_names["code"] = "Code"
-    except:
-        formats_to_human_names["code"] = "Code (not installed)"
+    else:
         display_functions["code"] = display.Pretty
+        formats_to_human_names["code"] = "Code (not installed)"
 
-    # Put the various formats into the argparser
+    # Put the various formats into the argument parser
     for output_type, human_name in formats_to_human_names.items():
         format_group.add_argument("--" + output_type, action='store_const',
                                   const=output_type, dest="format", help="Format as " + human_name)
